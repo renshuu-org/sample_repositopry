@@ -1,0 +1,13 @@
+name: Dependabot auto merge PRs
+
+on:
+  check_suite:
+    types:
+      - completed
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Event
+        run: echo ${{ github.event }}
