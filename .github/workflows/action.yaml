@@ -17,4 +17,9 @@ jobs:
       
       - name: print 
         run: echo "Hello World!"
-        
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+  
