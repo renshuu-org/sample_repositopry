@@ -37,7 +37,7 @@ jobs:
           echo "PR_BODY=This PR introduces the required CODEOWNERS file for repository maintenance, assigning ownership to the specified team." >> $GITHUB_ENV
         
       - name: Run Script to Clone, Modify, Commit, and Create PRs
-        env:
+        # env:
           # Pass the GITHUB_TOKEN to the shell environment for git commands
           # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
