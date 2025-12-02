@@ -13,8 +13,6 @@ on:
         required: true
         default: '* @renshuu-org/admin'
 
-permissions:
-  pull_requests: write
 env:
   GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
