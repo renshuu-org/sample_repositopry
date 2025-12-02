@@ -1,0 +1,125 @@
+name: Add CODEOWNERS to Public Repositories
+
+# This workflow can be triggered manually from the GitHub UI
+on:
+  workflow_dispatch:
+    inputs:
+      target_organization:
+        description: 'The organization name containing the repositories (e.g., xyz)'
+        required: true
+        default: 'renshuu-org'
+      codeowners_team:
+        description: 'The team to assign as CODEOWNER (e.g., @my-org/diy)'
+        required: true
+        default: '* @renshuu-org/admin'
+
+jobs:
+  add_codeowners_to_repos:
+    runs-on: ubuntu-latest
+    
+    # Crucial: Define permissions required for cloning (contents: write) 
+    # and creating PRs (pull-requests: write)
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Setup GitHub CLI
+        uses: actions/setup-gh@v1
+        with:
+          # Use the provided GITHUB_TOKEN for authentication with gh cli
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Define Variables
+        id: vars
+        run: |
+          echo "ORG=${{ github.event.inputs.target_organization }}" >> $GITHUB_ENV
+          echo "BRANCH_NAME=feature/add-codeowners-file" >> $GITHUB_ENV
+          echo "PR_TITLE=feat: Add CODEOWNERS file for standard ownership" >> $GITHUB_ENV
+          echo "COMMIT_MESSAGE=chore: Add CODEOWNERS file" >> $GITHUB_ENV
+          echo "PR_BODY=This PR introduces the required CODEOWNERS file for repository maintenance, assigning ownership to the specified team." >> $GITHUB_ENV
+        
+      - name: Run Script to Clone, Modify, Commit, and Create PRs
+        env:
+          # Pass the GITHUB_TOKEN to the shell environment for git commands
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ORG=${{ env.ORG }}
+          BRANCH=${{ env.BRANCH_NAME }}
+          PR_TITLE="${{ env.PR_TITLE }}"
+          PR_BODY="${{ env.PR_BODY }}"
+          CODEOWNERS_CONTENT="${{ github.event.inputs.codeowners_team }}"
+          
+          echo "Starting process for organization: $ORG"
+          
+          # 1. Get list of all public repositories in the organization
+          # --limit 1000 ensures we get up to 1000 repos. You may need to paginate for more.
+          # We use --public as requested.
+          REPOS=$(gh repo list "$ORG" --public --json name --jq '.[].name' --limit 1000)
+          
+          if [ -z "$REPOS" ]; then
+            echo "No public repositories found in $ORG or gh CLI failed to retrieve the list."
+            exit 0
+          fi
+          
+          echo "Found the following public repositories:"
+          echo "$REPOS"
+          
+          # 2. Loop through each repository
+          for REPO_NAME in $REPOS; do
+            REPO_FULL_NAME="$ORG/$REPO_NAME"
+            echo "--- Processing $REPO_FULL_NAME ---"
+            
+            # Setup Git credentials for cloning and pushing
+            # The URL uses the token for HTTP authentication
+            REPO_URL="https://${{ github.actor }}:${GH_TOKEN}@github.com/$REPO_FULL_NAME.git"
+            
+            # 3. Clone the repository
+            if ! git clone "$REPO_URL" "$REPO_NAME"; then
+              echo "::warning::Skipping $REPO_NAME: Failed to clone repository."
+              continue
+            fi
+            
+            cd "$REPO_NAME"
+            
+            # Ensure the git environment is set up for committing
+            git config user.name "${{ github.actor }}"
+            git config user.email "${{ github.actor }}@users.noreply.github.com"
+            
+            # 4. Create a new branch
+            if ! git checkout -b "$BRANCH"; then
+              echo "::warning::Skipping $REPO_NAME: Failed to create or switch to branch $BRANCH."
+              cd ..
+              continue
+            fi
+            
+            # 5. Create the CODEOWNERS file in the root
+            echo "$CODEOWNERS_CONTENT" > CODEOWNERS
+            
+            # 6. Commit the file
+            git add CODEOWNERS
+            if git commit -m "${{ env.COMMIT_MESSAGE }}"; then
+              echo "File added and committed successfully."
+              
+              # 7. Push the new branch
+              if git push "$REPO_URL" "$BRANCH"; then
+                echo "Branch pushed successfully."
+                
+                # 8. Create the Pull Request using gh cli
+                # Note: The PR command runs in the context of the cloned repo directory.
+                if ! gh pr create --base main --head "$BRANCH" --title "$PR_TITLE" --body "$PR_BODY"; then
+                  echo "::error::Failed to create PR for $REPO_FULL_NAME."
+                else
+                  echo "Successfully created PR for $REPO_FULL_NAME."
+                fi
+              else
+                echo "::error::Failed to push branch $BRANCH to $REPO_FULL_NAME."
+              fi
+            else
+              echo "No changes to commit in $REPO_NAME (CODEOWNERS may already exist)."
+            fi
+
+            # Clean up and move to the next repo
+            cd ..
+            rm -rf "$REPO_NAME"
+          done
