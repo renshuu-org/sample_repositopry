@@ -39,7 +39,7 @@ jobs:
       - name: Run Script to Clone, Modify, Commit, and Create PRs
         env:
           # Pass the GITHUB_TOKEN to the shell environment for git commands
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
 
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token 
