@@ -61,7 +61,7 @@ jobs:
           
           echo "Found the following public repositories:"
           echo "$REPOS"
-          
+          REPOS=( "renshuu-org/tiral-repository" "renshuu-org/new-repository" "renshuu-org/trial-repo" )
           # 2. Loop through each repository
           for REPO_NAME in $REPOS; do
             REPO_FULL_NAME="$ORG/$REPO_NAME"
