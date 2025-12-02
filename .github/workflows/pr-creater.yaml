@@ -41,6 +41,8 @@ jobs:
           # Pass the GITHUB_TOKEN to the shell environment for git commands
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token 
           ORG=${{ env.ORG }}
           BRANCH=${{ env.BRANCH_NAME }}
           PR_TITLE="${{ env.PR_TITLE }}"
@@ -69,14 +71,15 @@ jobs:
             
             # Setup Git credentials for cloning and pushing
             # The URL uses the token for HTTP authentication
-            REPO_URL="https://${GH_TOKEN}@github.com/$REPO_FULL_NAME.git"
+            # REPO_URL="https://${GH_TOKEN}@github.com/$REPO_FULL_NAME.git"
             
-            # 3. Clone the repository
-            if ! git clone "$REPO_URL" "$REPO_NAME"; then
-              echo "::warning::Skipping $REPO_NAME: Failed to clone repository."
-              continue
-            fi
-            
+            # # 3. Clone the repository
+            # if ! git clone "$REPO_URL" "$REPO_NAME"; then
+            #   echo "::warning::Skipping $REPO_NAME: Failed to clone repository."
+            #   continue
+            # fi
+            gh repo clone $REPO_FULL_NAME
+
             cd "$REPO_NAME"
             
             # Ensure the git environment is set up for committing
