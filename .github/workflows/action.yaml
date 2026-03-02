@@ -12,6 +12,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Print Event
+        run: echo "${{ toJSON(github.event) }}"
+
       - name: checkout branch 
         uses: actions/checkout@v2
       
